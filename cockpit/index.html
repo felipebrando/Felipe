@@ -42,6 +42,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font: 15px/1.5 var(--f-body);
@@ -135,6 +136,33 @@ button.launch:disabled { opacity: .6; cursor: progress; }
 .runmsg { margin: 0; font-size: 0.82rem; color: var(--muted); }
 .runmsg.ok { color: var(--ok); } .runmsg.err { color: var(--bad); }
 
+/* prospects */
+.pros-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 6px 14px; font: 500 0.85rem var(--f-body); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.tab .num { opacity: .8; margin-left: 4px; }
+.funnel { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; color: var(--muted); }
+.funnel b { font: 500 0.95rem var(--f-mono); color: var(--ink); margin-right: 3px; }
+.pros-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 12px; }
+.pcard { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.pcard.st-convite { border-color: var(--wait); } .pcard.st-conectado, .pcard.st-conversa { border-color: var(--ok); }
+.pcard .who { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
+.pcard .who a { font-weight: 600; color: var(--ink); text-decoration: none; }
+.pcard .who a:hover { color: var(--accent); text-decoration: underline; }
+.pcard .role { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+.pips { display: inline-flex; gap: 3px; flex: none; padding-top: 4px; }
+.pips i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.pips i.on { background: var(--warm); }
+.pcard .why { font-size: 0.82rem; }
+.msg { background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; display: grid; gap: 6px; }
+.msg-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.mini { font: 500 0.75rem var(--f-mono); border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 4px 8px; cursor: pointer; text-decoration: none; }
+.mini:hover { border-color: var(--accent); color: var(--accent); }
+.mini.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+.status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
+.status-row select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+
 /* estado */
 .banner { border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; display: grid; gap: 8px; }
 .banner.warn { background: var(--wait-bg); color: var(--ink); }
@@ -222,6 +250,19 @@ button.launch:disabled { opacity: .6; cursor: progress; }
       </section>
     </div>
   </div>
+
+  <section class="panel" aria-labelledby="pr-title" id="prospects">
+    <div class="pros-head">
+      <div>
+        <h2 id="pr-title">Prospects no LinkedIn</h2>
+        <span class="src">Perfis públicos encontrados toda segunda às 10h. Você conecta manualmente.</span>
+      </div>
+      <div class="tabs" role="tablist" id="pr-tabs"></div>
+    </div>
+    <div class="funnel" id="pr-funnel"></div>
+    <div id="pr-run"></div>
+    <div class="pros-list" id="pr-list"><p class="skeleton">A lista aparece quando o cockpit conecta.</p></div>
+  </section>
 </div>
 
 <script>
@@ -257,7 +298,7 @@ button.launch:disabled { opacity: .6; cursor: progress; }
       if (!el) return;
       el.innerHTML = groups[id].map(function (l, i) {
         if (l.action) {
-          return '<div class="runbox" data-action="' + esc(l.action) + '" data-confirm="' + esc(l.confirm || 'Disparar agora?') + '">' +
+          return '<div class="runbox" data-action="' + esc(l.action) + '" data-confirm="' + esc(l.confirm || 'Disparar agora?') + '" data-done="' + esc(l.done || 'Acompanhe pelas execuções no n8n.') + '">' +
             '<button type="button" class="launch' + (l.primary ? ' primary' : '') + '" id="run-' + id + '-' + i + '">' + launchInner(l, l.go || 'disparar') + '</button>' +
             '<div class="confirm" hidden><span></span><div class="confirm-btns"><button type="button" class="yes">Disparar</button><button type="button" class="no btn-ghost">Cancelar</button></div></div>' +
             '<p class="runmsg" hidden></p></div>';
@@ -282,7 +323,7 @@ button.launch:disabled { opacity: .6; cursor: progress; }
         .then(function (t) {
           if (t.indexOf('iniciado') === -1) throw new Error('chave');
           msg.className = 'runmsg ok';
-          msg.textContent = 'Disparado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '. Acompanhe pelo e-mail de aprovação ou pelas execuções no n8n.';
+          msg.textContent = 'Disparado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '. ' + box.getAttribute('data-done');
         })
         .catch(function (e) {
           msg.className = 'runmsg err';
@@ -291,6 +332,69 @@ button.launch:disabled { opacity: .6; cursor: progress; }
         .then(function () { btn.disabled = false; });
     });
   }
+
+
+  /* ---------- prospects ---------- */
+  var PR = { data: null, tab: null };
+  var PR_STATUS = [['novo', 'Novo'], ['convite', 'Convite enviado'], ['conectado', 'Conectado'], ['conversa', 'Em conversa'], ['descartado', 'Descartar']];
+  var PR_LABEL = { BLM: 'BLM · investidores', Brando: 'Brando · música', ICAO: 'ICAO · aviação' };
+  try { PR.tab = localStorage.getItem('cockpit_pr_tab'); } catch (e) {}
+
+  function renderProspects(p) {
+    PR.data = p || { porProjeto: {}, contagem: {} };
+    var projs = ['BLM', 'Brando', 'ICAO'];
+    if (!PR.tab || projs.indexOf(PR.tab) === -1) PR.tab = 'Brando';
+    document.getElementById('pr-tabs').innerHTML = projs.map(function (k) {
+      var n = (PR.data.porProjeto[k] || []).filter(function (x) { return x.status === 'novo'; }).length;
+      return '<button type="button" role="tab" class="tab" id="tab-' + k + '" aria-selected="' + (k === PR.tab) + '" data-k="' + k + '">' + esc(PR_LABEL[k] || k) + '<span class="num">' + n + '</span></button>';
+    }).join('');
+    document.querySelectorAll('#pr-tabs .tab').forEach(function (b) {
+      b.addEventListener('click', function () { PR.tab = b.getAttribute('data-k'); try { localStorage.setItem('cockpit_pr_tab', PR.tab); } catch (e) {} renderProspects(PR.data); });
+    });
+    var c = PR.data.contagem[PR.tab] || {};
+    document.getElementById('pr-funnel').innerHTML =
+      '<span><b>' + fmt(c.novo) + '</b>novos</span><span><b>' + fmt(c.convite) + '</b>convites enviados</span><span><b>' + fmt(c.conectado) + '</b>conectados</span><span><b>' + fmt(c.conversa) + '</b>em conversa</span><span><b>' + fmt(c.descartado) + '</b>descartados</span>';
+    var list = PR.data.porProjeto[PR.tab] || [];
+    var el = document.getElementById('pr-list');
+    if (!list.length) { el.innerHTML = '<p class="note">Nenhum prospect ativo neste projeto. Use "Buscar novos agora" ou aguarde a busca de segunda.</p>'; return; }
+    el.innerHTML = list.map(function (x) {
+      var pips = ''; for (var i = 1; i <= 5; i++) pips += '<i class="' + (i <= x.nota ? 'on' : '') + '"></i>';
+      var opts = PR_STATUS.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === x.status ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('');
+      return '<article class="pcard st-' + esc(x.status) + '" data-id="' + x.id + '">' +
+        '<div class="who"><div><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.nome) + '</a><div class="role">' + esc(x.titulo) + '</div></div>' +
+        '<span class="pips" title="Relevância ' + x.nota + ' de 5" aria-label="Relevância ' + x.nota + ' de 5">' + pips + '</span></div>' +
+        (x.motivo ? '<div class="why">' + esc(x.motivo) + '</div>' : '') +
+        (x.mensagem ? '<div class="msg"><span class="msgtext">' + esc(x.mensagem) + '</span><div class="msg-actions"><button type="button" class="mini copy">Copiar nota</button><a class="mini primary" href="' + esc(x.url) + '" target="_blank" rel="noopener">Abrir perfil ↗</a></div></div>' : '') +
+        '<div class="status-row"><label for="st-' + x.id + '">Status</label><select id="st-' + x.id + '">' + opts + '</select><span class="saved"></span></div>' +
+        '</article>';
+    }).join('');
+    el.querySelectorAll('.pcard').forEach(wireCard);
+  }
+
+  function wireCard(card) {
+    var id = card.getAttribute('data-id');
+    var copy = card.querySelector('.copy');
+    if (copy) copy.addEventListener('click', function () {
+      var t = card.querySelector('.msgtext');
+      var done = function () { copy.textContent = 'Copiado'; setTimeout(function () { copy.textContent = 'Copiar nota'; }, 1500); };
+      try { navigator.clipboard.writeText(t.textContent).then(done, function () { selectText(t); }); } catch (e) { selectText(t); }
+    });
+    var sel = card.querySelector('select'), saved = card.querySelector('.saved');
+    sel.addEventListener('change', function () {
+      var st = sel.value; saved.textContent = 'Salvando…';
+      fetch((onN8n ? '' : N8N) + '/webhook/prospect-status?key=' + encodeURIComponent(getKey()) + '&id=' + encodeURIComponent(id) + '&status=' + st, { method: 'POST', body: 'cockpit', headers: { 'Content-Type': 'text/plain' } })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          if (t.indexOf('ok') === -1) throw new Error('chave');
+          saved.textContent = 'Salvo';
+          (PR.data.porProjeto[PR.tab] || []).forEach(function (x) { if (String(x.id) === id) x.status = st; });
+          card.className = 'pcard st-' + st;
+          if (st === 'descartado') card.hidden = true;
+        })
+        .catch(function () { saved.textContent = 'Não salvou. Tente de novo.'; });
+    });
+  }
+  function selectText(node) { try { var r = document.createRange(); r.selectNodeContents(node); var s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) {} }
 
   /* ---------- fonte de dados ---------- */
   var params = new URLSearchParams(location.search);
@@ -340,7 +444,8 @@ button.launch:disabled { opacity: .6; cursor: progress; }
 
   /* ---------- render ---------- */
   function render(d) {
-    renderLaunch(d.atalhos);
+    renderLaunch(Object.assign({}, d.atalhos, { 'pr-run': [{ t: 'Buscar novos agora', s: 'Roda a busca fora da segunda. Leva alguns minutos; depois clique em Atualizar.', action: 'prospects-buscar', confirm: 'Buscar novos prospects agora para os 3 projetos?', ic: 'flow', go: 'buscar', done: 'Em alguns minutos clique em Atualizar para ver os novos.' }] }));
+    renderProspects(d.prospects);
     var when = new Date(d.geradoEm);
     document.getElementById('updated').textContent = 'Atualizado ' + when.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
