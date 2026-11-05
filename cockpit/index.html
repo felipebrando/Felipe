@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Cockpit BLM</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: painel de bordo — faixa de status no topo, métricas à esquerda, lançadores à direita; empilha no celular. */
+:root {
+  --bg: #eef0ef;
+  --panel: #ffffff;
+  --ink: #17201e;
+  --muted: #5d6a66;
+  --line: #d6dcda;
+  --accent: #0f6b5c;      /* verde-petróleo: ação */
+  --accent-soft: #dcefe9;
+  --warm: #b8661c;        /* âmbar: destaque de série */
+  --ok: #1f7a3a; --ok-bg: #e2f2e6;
+  --bad: #b3261e; --bad-bg: #fbe4e1;
+  --wait: #8a6100; --wait-bg: #fbf0d4;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111715; --panel: #18201e; --ink: #e6ecea; --muted: #94a39e; --line: #2a3532;
+    --accent: #4fc2a8; --accent-soft: #1b3530; --warm: #e39a52;
+    --ok: #6fd18b; --ok-bg: #173022; --bad: #ff8a80; --bad-bg: #3a1a18; --wait: #f0c35a; --wait-bg: #352a10;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111715; --panel: #18201e; --ink: #e6ecea; --muted: #94a39e; --line: #2a3532;
+  --accent: #4fc2a8; --accent-soft: #1b3530; --warm: #e39a52;
+  --ok: #6fd18b; --ok-bg: #173022; --bad: #ff8a80; --bad-bg: #3a1a18; --wait: #f0c35a; --wait-bg: #352a10;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
+h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; font-weight: 700; }
+.eyebrow { font: 500 0.72rem/1 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+a { color: var(--accent); }
+button, .btn { font: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* topo */
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.top .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--muted); font-size: 0.85rem; }
+.btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 12px; }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* faixa de status */
+.strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 0.82rem; background: var(--panel); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.pill.ok .dot { background: var(--ok); } .pill.bad { background: var(--bad-bg); border-color: transparent; } .pill.bad .dot { background: var(--bad); }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 20px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; display: grid; gap: 14px; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.panel-head .src { font-size: 0.78rem; color: var(--muted); }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+@media (max-width: 560px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { background: var(--panel); padding: 12px 14px; display: grid; gap: 4px; }
+.kpi .v { font: 500 1.6rem/1.1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 0.78rem; color: var(--muted); }
+.kpi .d { font-size: 0.75rem; font-family: var(--f-mono); color: var(--muted); }
+.kpi .d.up { color: var(--ok); } .kpi .d.down { color: var(--bad); }
+
+/* gráfico */
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font: 10px var(--f-mono); }
+.legend { display: flex; gap: 14px; font-size: 0.78rem; color: var(--muted); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 560px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.bars li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; font-size: 0.85rem; }
+.bars .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars .track { grid-column: 1 / -1; height: 4px; background: var(--accent-soft); border-radius: 2px; }
+.bars .fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+/* ciclo */
+.cycle { display: grid; gap: 10px; align-content: start; }
+.progress { height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
+.progress > div { height: 100%; background: var(--warm); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.facts div { display: grid; gap: 2px; }
+.facts .v { font: 500 1.25rem/1.1 var(--f-mono); }
+.facts .l { font-size: 0.75rem; color: var(--muted); }
+.acts { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 0.85rem; }
+.acts li { border-top: 1px solid var(--line); padding-top: 6px; }
+.note { font-size: 0.82rem; color: var(--muted); }
+
+/* lançadores */
+.group { display: grid; gap: 8px; align-content: start; }
+.launch { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); background: var(--panel); transition: border-color .15s, background .15s; }
+.launch:hover { border-color: var(--accent); background: var(--accent-soft); }
+.launch .ic { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.launch .ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.launch .t { font-weight: 600; font-size: 0.92rem; }
+.launch .s { font-size: 0.78rem; color: var(--muted); }
+.launch .go { font: 500 0.72rem var(--f-mono); color: var(--accent); white-space: nowrap; }
+.launch.primary { border-color: var(--accent); }
+.launch.primary .ic { background: var(--accent); color: var(--panel); }
+.tag { display: inline-block; font: 500 0.66rem/1 var(--f-mono); padding: 3px 6px; border-radius: 4px; background: var(--wait-bg); color: var(--wait); margin-left: 6px; vertical-align: 1px; }
+
+/* estado */
+.banner { border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; display: grid; gap: 8px; }
+.banner.warn { background: var(--wait-bg); color: var(--ink); }
+.banner.err { background: var(--bad-bg); color: var(--ink); }
+.keyrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.keyrow input { flex: 1 1 220px; min-width: 0; font: inherit; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.keyrow button { background: var(--accent); color: var(--panel); border: 0; border-radius: 8px; padding: 7px 14px; font-weight: 600; }
+.skeleton { color: var(--muted); font-size: 0.85rem; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">BLM Group · painel de bordo</div>
+      <h1>Cockpit BLM</h1>
+    </div>
+    <div class="meta">
+      <span id="updated">Carregando dados…</span>
+      <button class="btn-ghost" id="refresh" type="button">Atualizar</button>
+    </div>
+  </header>
+
+  <div id="banner"></div>
+
+  <nav class="strip" id="sites" aria-label="Status dos sites">
+    <span class="pill"><span class="dot"></span>Verificando sites…</span>
+  </nav>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel" aria-labelledby="ga-title">
+        <div class="panel-head">
+          <h2 id="ga-title">Acessos · brandoguitarras.com.br</h2>
+          <span class="src" id="ga-src">Google Analytics 4</span>
+        </div>
+        <div class="kpis" id="kpis">
+          <div class="kpi"><span class="l">Sessões · 7 dias</span><span class="v">—</span></div>
+          <div class="kpi"><span class="l">Usuários · 7 dias</span><span class="v">—</span></div>
+          <div class="kpi"><span class="l">Visualizações · 7 dias</span><span class="v">—</span></div>
+          <div class="kpi"><span class="l">Pedidos de prévia · 7 dias</span><span class="v">—</span></div>
+        </div>
+        <div>
+          <div class="panel-head" style="margin-bottom:6px">
+            <span class="eyebrow">Últimos 30 dias</span>
+            <div class="legend"><span><i style="background:var(--accent)"></i>Sessões</span><span><i style="background:var(--warm)"></i>Visualizações</span></div>
+          </div>
+          <div id="chart"><p class="skeleton">O gráfico aparece quando os dados chegam.</p></div>
+        </div>
+        <div class="two">
+          <div class="group"><span class="eyebrow">De onde vêm · 7 dias</span><ul class="bars" id="origens"></ul></div>
+          <div class="group"><span class="eyebrow">Páginas mais vistas · 7 dias</span><ul class="bars" id="paginas"></ul></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="cy-title">
+        <div class="panel-head">
+          <h2 id="cy-title">Ciclo Brando · meta: 1ª guitarra</h2>
+          <span class="src">BLM Scorecard · abas Vendas e Ações</span>
+        </div>
+        <div class="cycle" id="cycle">
+          <div class="progress" aria-hidden="true"><div style="width:0"></div></div>
+          <div class="facts">
+            <div><span class="v">—</span><span class="l">Guitarras vendidas</span></div>
+            <div><span class="v">—</span><span class="l">Ações comerciais</span></div>
+            <div><span class="v">—</span><span class="l">Propostas</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-labelledby="go-title">
+        <div class="panel-head"><h2 id="go-title">Conteúdo e publicação</h2><span class="src">Formulários n8n</span></div>
+        <div class="group" id="launch-content"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
+      </section>
+      <section class="panel" aria-labelledby="go2-title">
+        <div class="panel-head"><h2 id="go2-title">Dream Stickers · vídeos</h2><span class="src">Formulários n8n</span></div>
+        <div class="group" id="launch-dream"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
+      </section>
+      <section class="panel" aria-labelledby="go3-title">
+        <div class="panel-head"><h2 id="go3-title">Atalhos</h2></div>
+        <div class="group" id="launch-tools"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var N8N = 'https://brandoguitarras.app.n8n.cloud';
+  var ICON = {
+    play: '<path d="M7 5l12 7-12 7z"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>',
+    story: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+    linkedin: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7M8 7v.01M12 17v-4a2 2 0 014 0v4M12 10v7"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',
+    video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+    wand: '<path d="M4 20L16 8M14 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM19 11l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5z"/>',
+    flow: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.5 6H12a3 3 0 013 3v.5M8.5 18H12a3 3 0 003-3v-.5"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    sheet: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'
+  };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmt(n) { return Number(n || 0).toLocaleString('pt-BR'); }
+  function brl(n) { return Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+  function renderLaunch(groups) {
+    Object.keys(groups || {}).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = groups[id].map(function (l) {
+        var ic = ICON[l.ic] || ICON.flow;
+        return '<a class="launch' + (l.primary ? ' primary' : '') + '" href="' + esc(l.href) + '" target="_blank" rel="noopener">' +
+          '<span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">' + ic + '</svg></span>' +
+          '<span><span class="t">' + esc(l.t) + '</span><br><span class="s">' + esc(l.s) + '</span></span>' +
+          '<span class="go">' + esc(l.go) + ' \u2197</span></a>';
+      }).join('');
+    });
+  }
+
+  /* ---------- fonte de dados ---------- */
+  var params = new URLSearchParams(location.search);
+  var onN8n = /n8n\.cloud$/.test(location.hostname);
+  function getKey() {
+    if (params.get('key')) return params.get('key');
+    try { return localStorage.getItem('cockpit_key') || ''; } catch (e) { return ''; }
+  }
+  function endpoint(key) {
+    return (onN8n ? '' : N8N) + '/webhook/cockpit-dados?key=' + encodeURIComponent(key);
+  }
+
+  function askKey(msg) {
+    var b = document.getElementById('banner');
+    b.innerHTML = '<div class="banner warn"><div>' + esc(msg) + '</div>' +
+      '<form class="keyrow" id="keyform"><input id="keyinput" type="password" autocomplete="off" placeholder="Chave do cockpit" aria-label="Chave do cockpit">' +
+      '<button type="submit">Conectar</button></form></div>';
+    document.getElementById('keyform').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = document.getElementById('keyinput').value.trim();
+      if (!v) return;
+      try { localStorage.setItem('cockpit_key', v); } catch (err) {}
+      params.set('key', v);
+      load();
+    });
+    document.getElementById('updated').textContent = 'Sem dados';
+  }
+
+  function load() {
+    var key = getKey();
+    if (!key) { askKey('Informe a chave do cockpit para carregar acessos e status. Os botões e formulários aparecem depois de conectar.'); return; }
+    document.getElementById('updated').textContent = 'Carregando dados…';
+    fetch(endpoint(key), { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (txt) {
+        if (!txt) { askKey('A chave não foi aceita. Confira e tente de novo.'); return; }
+        var d = JSON.parse(txt);
+        document.getElementById('banner').innerHTML = '';
+        render(d);
+      })
+      .catch(function () {
+        document.getElementById('banner').innerHTML = '<div class="banner err">Não consegui falar com o n8n. Confira se o workflow "Cockpit — Dados" está ativo e tente Atualizar.</div>';
+        document.getElementById('updated').textContent = 'Falha ao carregar';
+      });
+  }
+  document.getElementById('refresh').addEventListener('click', load);
+
+  /* ---------- render ---------- */
+  function render(d) {
+    renderLaunch(d.atalhos);
+    var when = new Date(d.geradoEm);
+    document.getElementById('updated').textContent = 'Atualizado ' + when.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+    document.getElementById('sites').innerHTML = (d.sites || []).map(function (s) {
+      var label = s.ok ? 'no ar' : (s.status ? 'erro ' + s.status : 'sem resposta');
+      return '<a class="pill ' + (s.ok ? 'ok' : 'bad') + '" href="' + esc(s.url) + '" target="_blank" rel="noopener" title="' + esc(s.url) + '"><span class="dot"></span>' + esc(s.nome) + ' · <span class="num">' + esc(label) + '</span></a>';
+    }).join('');
+
+    var ga = d.ga || {};
+    if (ga.erro) document.getElementById('ga-src').textContent = 'GA4 indisponível: ' + ga.erro;
+
+    // série completa de 30 dias (GA omite dias zerados)
+    var map = {};
+    (ga.diario || []).forEach(function (r) { map[r.date] = r; });
+    var days = [];
+    var base = new Date(when); base.setHours(12, 0, 0, 0);
+    for (var i = 30; i >= 1; i--) {
+      var dt = new Date(base); dt.setDate(dt.getDate() - i);
+      var k = dt.getFullYear() + String(dt.getMonth() + 1).padStart(2, '0') + String(dt.getDate()).padStart(2, '0');
+      var r = map[k] || {};
+      days.push({ dt: dt, sessions: r.sessions || 0, users: r.users || 0, views: r.views || 0 });
+    }
+    function sum(arr, f) { return arr.reduce(function (a, x) { return a + x[f]; }, 0); }
+    var last7 = days.slice(-7), prev7 = days.slice(-14, -7);
+    var ev = {}; (ga.eventos || []).forEach(function (e) { ev[e.nome] = e.valor; });
+    var kpis = [
+      ['Sessões · 7 dias', sum(last7, 'sessions'), sum(prev7, 'sessions')],
+      ['Usuários · 7 dias', sum(last7, 'users'), sum(prev7, 'users')],
+      ['Visualizações · 7 dias', sum(last7, 'views'), sum(prev7, 'views')],
+      ['Pedidos de prévia · 7 dias', ev.guitar_request || 0, null]
+    ];
+    document.getElementById('kpis').innerHTML = kpis.map(function (k) {
+      var delta = '';
+      if (k[2] !== null) {
+        var diff = k[1] - k[2];
+        delta = '<span class="d ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : '') + '">' + (diff > 0 ? '+' : '') + fmt(diff) + ' vs 7 dias antes</span>';
+      } else {
+        delta = '<span class="d">evento guitar_request</span>';
+      }
+      return '<div class="kpi"><span class="l">' + k[0] + '</span><span class="v">' + fmt(k[1]) + '</span>' + delta + '</div>';
+    }).join('');
+
+    drawChart(days);
+    bars('origens', (ga.origens || []).map(function (o) { return { nome: o.nome === '(direct)' ? 'Direto' : o.nome === 'ig' ? 'Instagram (ig)' : o.nome, valor: o.valor }; }), 'sessões');
+    bars('paginas', ga.paginas || [], 'views');
+
+    var c = d.ciclo || {};
+    var pct = Math.min(100, Math.round((c.dia || 0) / 90 * 100));
+    var acts = (c.ultimasAcoes || []).map(function (a) {
+      return '<li><span class="num">' + esc(a.data) + '</span> · ' + esc(a.tipo) + ' — ' + esc(a.pessoa) + (a.canal ? ' (' + esc(a.canal) + ')' : '') + (a.resultado ? ': ' + esc(a.resultado) : '') + '</li>';
+    }).join('');
+    document.getElementById('cycle').innerHTML =
+      '<div class="panel-head"><span class="eyebrow">Dia <span class="num">' + (c.dia || '—') + '</span> de 90</span><span class="note num">faltam ' + (c.diasRestantes != null ? c.diasRestantes : '—') + ' dias</span></div>' +
+      '<div class="progress" aria-hidden="true"><div style="width:' + pct + '%"></div></div>' +
+      '<div class="facts">' +
+        '<div><span class="v">' + fmt(c.guitarras) + '</span><span class="l">Guitarras vendidas · ' + brl(c.receitaGuitarras) + '</span></div>' +
+        '<div><span class="v">' + fmt(c.acoes) + '</span><span class="l">Ações comerciais</span></div>' +
+        '<div><span class="v">' + fmt(c.propostas) + '</span><span class="l">Propostas</span></div>' +
+      '</div>' +
+      (acts ? '<ul class="acts">' + acts + '</ul>' : '<p class="note">Nenhuma ação registrada no ciclo. Cada contato ou proposta vai na aba Ações do Scorecard (Data | Tipo | Pessoa | Canal | Resultado).</p>') +
+      '<p class="note">Outras receitas no ciclo (não contam para a meta): ' + brl(c.outrasReceitas) + '</p>';
+  }
+
+  function bars(id, list, unit) {
+    var el = document.getElementById(id);
+    if (!list.length) { el.innerHTML = '<li class="note">Sem dados no período.</li>'; return; }
+    var max = Math.max.apply(null, list.map(function (x) { return x.valor; })) || 1;
+    el.innerHTML = list.map(function (x) {
+      return '<li><span class="name" title="' + esc(x.nome) + '">' + esc(x.nome) + '</span><span class="num">' + fmt(x.valor) + '</span>' +
+        '<span class="track"><span class="fill" style="display:block;width:' + Math.max(3, x.valor / max * 100) + '%"></span></span></li>';
+    }).join('');
+  }
+
+  function niceMax(v) {
+    if (v <= 5) return 5;
+    var p = Math.pow(10, Math.floor(Math.log10(v)));
+    var steps = [1, 2, 2.5, 5, 10];
+    for (var i = 0; i < steps.length; i++) if (steps[i] * p >= v) return steps[i] * p;
+    return 10 * p;
+  }
+
+  function drawChart(days) {
+    var W = 640, H = 200, L = 30, R = 10, T = 10, B = 24;
+    var iw = W - L - R, ih = H - T - B;
+    var max = niceMax(Math.max(1, Math.max.apply(null, days.map(function (d) { return Math.max(d.sessions, d.views); }))));
+    var n = days.length, bw = iw / n;
+    var y = function (v) { return T + ih - v / max * ih; };
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Sessões e visualizações por dia nos últimos 30 dias">';
+    [0, 0.5, 1].forEach(function (f) {
+      var v = max * f, yy = y(v);
+      svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" stroke-width="1"/>';
+      svg += '<text x="' + (L - 6) + '" y="' + (yy + 3) + '" text-anchor="end">' + fmt(v) + '</text>';
+    });
+    // barras: sessões
+    days.forEach(function (d, i) {
+      var h = d.sessions / max * ih;
+      svg += '<rect x="' + (L + i * bw + bw * 0.18) + '" y="' + (T + ih - h) + '" width="' + (bw * 0.64) + '" height="' + h + '" rx="1.5" fill="var(--accent)"><title>' +
+        d.dt.toLocaleDateString('pt-BR') + ': ' + d.sessions + ' sessões, ' + d.views + ' visualizações</title></rect>';
+    });
+    // linha: visualizações
+    var pts = days.map(function (d, i) { return (L + i * bw + bw / 2).toFixed(1) + ',' + y(d.views).toFixed(1); });
+    svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--warm)" stroke-width="1.6" stroke-linejoin="round"/>';
+    var last = days[n - 1];
+    svg += '<circle cx="' + (L + (n - 1) * bw + bw / 2) + '" cy="' + y(last.views) + '" r="3" fill="var(--warm)"/>';
+    // rótulos de data: 1 a cada 7 dias
+    days.forEach(function (d, i) {
+      if ((n - 1 - i) % 7 === 0) svg += '<text x="' + (L + i * bw + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + d.dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + '</text>';
+    });
+    svg += '</svg>';
+    document.getElementById('chart').innerHTML = svg;
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
