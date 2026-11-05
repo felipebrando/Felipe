@@ -126,6 +126,15 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .launch.primary .ic { background: var(--accent); color: var(--panel); }
 .tag { display: inline-block; font: 500 0.66rem/1 var(--f-mono); padding: 3px 6px; border-radius: 4px; background: var(--wait-bg); color: var(--wait); margin-left: 6px; vertical-align: 1px; }
 
+.runbox { display: grid; gap: 8px; }
+button.launch { width: 100%; text-align: left; font: inherit; }
+button.launch:disabled { opacity: .6; cursor: progress; }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--wait-bg); font-size: 0.85rem; }
+.confirm-btns { display: flex; gap: 8px; }
+.confirm .yes { background: var(--accent); color: var(--panel); border: 0; border-radius: 8px; padding: 6px 14px; font-weight: 600; }
+.runmsg { margin: 0; font-size: 0.82rem; color: var(--muted); }
+.runmsg.ok { color: var(--ok); } .runmsg.err { color: var(--bad); }
+
 /* estado */
 .banner { border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; display: grid; gap: 8px; }
 .banner.warn { background: var(--wait-bg); color: var(--ink); }
@@ -236,17 +245,50 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
   function fmt(n) { return Number(n || 0).toLocaleString('pt-BR'); }
   function brl(n) { return Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
+  function launchInner(l, go) {
+    var ic = ICON[l.ic] || ICON.flow;
+    return '<span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">' + ic + '</svg></span>' +
+      '<span><span class="t">' + esc(l.t) + '</span><br><span class="s">' + esc(l.s) + '</span></span>' +
+      '<span class="go">' + esc(go) + '</span>';
+  }
   function renderLaunch(groups) {
     Object.keys(groups || {}).forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
-      el.innerHTML = groups[id].map(function (l) {
-        var ic = ICON[l.ic] || ICON.flow;
-        return '<a class="launch' + (l.primary ? ' primary' : '') + '" href="' + esc(l.href) + '" target="_blank" rel="noopener">' +
-          '<span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">' + ic + '</svg></span>' +
-          '<span><span class="t">' + esc(l.t) + '</span><br><span class="s">' + esc(l.s) + '</span></span>' +
-          '<span class="go">' + esc(l.go) + ' \u2197</span></a>';
+      el.innerHTML = groups[id].map(function (l, i) {
+        if (l.action) {
+          return '<div class="runbox" data-action="' + esc(l.action) + '" data-confirm="' + esc(l.confirm || 'Disparar agora?') + '">' +
+            '<button type="button" class="launch' + (l.primary ? ' primary' : '') + '" id="run-' + id + '-' + i + '">' + launchInner(l, l.go || 'disparar') + '</button>' +
+            '<div class="confirm" hidden><span></span><div class="confirm-btns"><button type="button" class="yes">Disparar</button><button type="button" class="no btn-ghost">Cancelar</button></div></div>' +
+            '<p class="runmsg" hidden></p></div>';
+        }
+        return '<a class="launch' + (l.primary ? ' primary' : '') + '" href="' + esc(l.href) + '" target="_blank" rel="noopener">' + launchInner(l, l.go + ' \u2197') + '</a>';
       }).join('');
+    });
+    document.querySelectorAll('.runbox').forEach(wireRun);
+  }
+  function wireRun(box) {
+    var btn = box.querySelector('.launch'), conf = box.querySelector('.confirm'), msg = box.querySelector('.runmsg');
+    btn.addEventListener('click', function () {
+      conf.querySelector('span').textContent = box.getAttribute('data-confirm');
+      conf.hidden = false; msg.hidden = true;
+    });
+    conf.querySelector('.no').addEventListener('click', function () { conf.hidden = true; });
+    conf.querySelector('.yes').addEventListener('click', function () {
+      conf.hidden = true; btn.disabled = true;
+      msg.hidden = false; msg.className = 'runmsg'; msg.textContent = 'Disparando…';
+      fetch((onN8n ? '' : N8N) + '/webhook/' + box.getAttribute('data-action') + '?key=' + encodeURIComponent(getKey()), { method: 'POST', body: 'cockpit', headers: { 'Content-Type': 'text/plain' } })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          if (t.indexOf('iniciado') === -1) throw new Error('chave');
+          msg.className = 'runmsg ok';
+          msg.textContent = 'Disparado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '. Acompanhe pelo e-mail de aprovação ou pelas execuções no n8n.';
+        })
+        .catch(function (e) {
+          msg.className = 'runmsg err';
+          msg.textContent = e.message === 'chave' ? 'O n8n não aceitou a chave. Nada foi disparado.' : 'Não consegui falar com o n8n. Nada foi disparado; tente de novo.';
+        })
+        .then(function () { btn.disabled = false; });
     });
   }
 
