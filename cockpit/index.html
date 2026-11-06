@@ -159,6 +159,13 @@ button.launch:disabled { opacity: .6; cursor: progress; }
 .funnel-list .fill { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
 .funnel-list .none { color: var(--muted); font-style: italic; }
 .proj .act { font-size: 0.8rem; border-top: 1px solid var(--line); padding-top: 8px; }
+.ads { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.ads-t { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.ads-t th { font: 500 0.66rem/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); text-align: right; padding: 2px 0 4px; }
+.ads-t th:first-child, .ads-t td:first-child { text-align: left; }
+.ads-t td { text-align: right; padding: 3px 0; font-family: var(--f-mono); border-top: 1px solid var(--line); }
+.camp { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.75rem; color: var(--muted); }
+.camp b { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
 
 /* prospects */
 .pros-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
@@ -220,7 +227,7 @@ button.launch:disabled { opacity: .6; cursor: progress; }
   <section class="panel" aria-labelledby="pj-title">
     <div class="panel-head">
       <h2 id="pj-title">Projetos</h2>
-      <span class="src">Últimos 7 dias vs 7 anteriores · GA4 · sensores instalados</span>
+      <span class="src">Últimos 7 dias vs 7 anteriores · GA4 · Meta Ads · Google Ads</span>
     </div>
     <div class="proj-grid" id="proj-grid"><p class="skeleton">Os projetos aparecem quando o cockpit conecta.</p></div>
   </section>
@@ -392,8 +399,22 @@ button.launch:disabled { opacity: .6; cursor: progress; }
         var pct = top ? Math.max(2, f.valor / top * 100) : 0;
         return '<li><span>' + esc(f.etapa) + '</span><span class="num">' + fmt(f.valor) + '</span><span class="track"><span class="fill" style="width:' + pct + '%"></span></span></li>';
       }).join('') + '</ul>';
+      var a = p.ads || {}, m = a.meta || {}, go = a.google || {}, ads;
+      var pc = function (x) { return x == null ? '—' : (x * 100).toFixed(1).replace('.', ',') + '%'; };
+      var money = function (x) { return x == null ? '—' : brl(x); };
+      if ((m.gasto7 || 0) + (go.gasto7 || 0) > 0) {
+        var row = function (n, g, c, r, cpr) { return '<tr><td>' + n + '</td><td>' + brl(g) + '</td><td>' + fmt(c) + '</td><td>' + (r == null ? '—' : fmt(r)) + '</td><td>' + money(cpr) + '</td></tr>'; };
+        var camps = (m.campanhas || []).slice(0, 3).map(function (c) {
+          return '<li><b>' + esc(c.nome) + '</b><br>' + brl(c.gasto) + ' · ' + fmt(c.cliques) + ' cliques · CTR ' + pc(c.ctr) + ' · ' + fmt(c.lpv || 0) + ' visitas à página · ' + fmt(c.resultados) + ' ' + esc(m.resultado || 'leads') + '</li>';
+        }).join('');
+        ads = '<div class="ads"><span class="eyebrow">Anúncios · 7 dias</span><table class="ads-t"><tr><th>Canal</th><th>Gasto</th><th>Cliques</th><th>' + esc(m.resultado || 'leads') + '</th><th>Custo/res.</th></tr>' +
+          (m.gasto7 ? row('Meta', m.gasto7, m.cliques7, m.resultados7, m.cpr) : '') + (go.gasto7 ? row('Google', go.gasto7, go.cliques7, null, null) : '') + '</table>' +
+          (camps ? '<ul class="camp">' + camps + '</ul>' : '') + '</div>';
+      } else {
+        ads = '<div class="ads"><span class="note">Sem anúncios nos últimos 7 dias.</span></div>';
+      }
       return '<article class="proj"><div class="proj-top"><div><strong>' + esc(p.nome) + '</strong><br><a href="https://' + esc(p.site) + '" target="_blank" rel="noopener">' + esc(p.site) + ' ↗</a></div><span class="sig ' + esc(p.sinal) + '">' + (LABEL[p.sinal] || p.sinal) + '</span></div>' +
-        '<div class="chips">' + chips + '</div>' + nums + fun + '<div class="act"><strong>Próxima ação:</strong> ' + esc(p.acao) + '</div></article>';
+        '<div class="chips">' + chips + '</div>' + nums + fun + ads + '<div class="act"><strong>Próxima ação:</strong> ' + esc(p.acao) + '</div></article>';
     }).join('');
   }
 
