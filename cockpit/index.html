@@ -136,6 +136,30 @@ button.launch:disabled { opacity: .6; cursor: progress; }
 .runmsg { margin: 0; font-size: 0.82rem; color: var(--muted); }
 .runmsg.ok { color: var(--ok); } .runmsg.err { color: var(--bad); }
 
+/* projetos */
+.proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.proj { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; background: var(--panel); }
+.proj-top { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.proj-top a { color: var(--muted); font-size: 0.78rem; text-decoration: none; }
+.proj-top a:hover { color: var(--accent); }
+.sig { font: 500 0.7rem/1 var(--f-mono); padding: 4px 8px; border-radius: 999px; white-space: nowrap; text-transform: uppercase; letter-spacing: .05em; }
+.sig.verde { background: var(--ok-bg); color: var(--ok); } .sig.amarelo { background: var(--wait-bg); color: var(--wait); }
+.sig.vermelho { background: var(--bad-bg); color: var(--bad); } .sig.cinza { background: var(--accent-soft); color: var(--muted); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: 500 0.68rem/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.chip.on { border-color: var(--ok); color: var(--ok); }
+.chip.off { text-decoration: line-through; }
+.proj-num { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.proj-num .v { font: 500 1.4rem/1 var(--f-mono); }
+.proj-num .l { font-size: 0.75rem; color: var(--muted); }
+.spark { width: 100%; height: 28px; display: block; }
+.funnel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.8rem; }
+.funnel-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; }
+.funnel-list .track { grid-column: 1 / -1; height: 3px; background: var(--accent-soft); border-radius: 2px; }
+.funnel-list .fill { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.funnel-list .none { color: var(--muted); font-style: italic; }
+.proj .act { font-size: 0.8rem; border-top: 1px solid var(--line); padding-top: 8px; }
+
 /* prospects */
 .pros-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -192,6 +216,14 @@ button.launch:disabled { opacity: .6; cursor: progress; }
   <nav class="strip" id="sites" aria-label="Status dos sites">
     <span class="pill"><span class="dot"></span>Verificando sites…</span>
   </nav>
+
+  <section class="panel" aria-labelledby="pj-title">
+    <div class="panel-head">
+      <h2 id="pj-title">Projetos</h2>
+      <span class="src">Últimos 7 dias vs 7 anteriores · GA4 · sensores instalados</span>
+    </div>
+    <div class="proj-grid" id="proj-grid"><p class="skeleton">Os projetos aparecem quando o cockpit conecta.</p></div>
+  </section>
 
   <div class="grid">
     <div class="col">
@@ -334,6 +366,37 @@ button.launch:disabled { opacity: .6; cursor: progress; }
   }
 
 
+
+  /* ---------- projetos ---------- */
+  function sparkline(arr) {
+    if (!arr || !arr.length) return '';
+    var max = Math.max.apply(null, arr) || 1, W = 200, H = 28;
+    var pts = arr.map(function (v, i) { return (i / (arr.length - 1) * W).toFixed(1) + ',' + (H - 2 - v / max * (H - 4)).toFixed(1); });
+    return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
+  }
+  function renderProjetos(list) {
+    var el = document.getElementById('proj-grid');
+    if (!list || !list.length) { el.innerHTML = '<p class="note">Sem dados de projetos.</p>'; return; }
+    var LABEL = { verde: 'ok', amarelo: 'atenção', vermelho: 'agir', cinza: 'sem sensor' };
+    el.innerHTML = list.map(function (p) {
+      var s = p.sensores || {};
+      var chips = [['GA4', s.ga4], ['Pixel Meta', s.metaPixel], ['Google Ads', s.googleAds]].map(function (c) { return '<span class="chip ' + (c[1] ? 'on' : 'off') + '">' + c[0] + '</span>'; }).join('');
+      var g = p.ga, nums = '';
+      if (g) {
+        var diff = g.sessoes7 - g.sessoesAnt;
+        nums = '<div class="proj-num"><span class="v">' + fmt(g.sessoes7) + '</span><span class="l">sessões · ' + (diff > 0 ? '+' : '') + fmt(diff) + ' vs semana anterior</span></div>' + sparkline(g.serie);
+      }
+      var top = (p.funil[0] && p.funil[0].valor) || 0;
+      var fun = '<ul class="funnel-list">' + p.funil.map(function (f) {
+        if (f.valor === null) return '<li><span>' + esc(f.etapa) + '</span><span class="none">sem sensor</span></li>';
+        var pct = top ? Math.max(2, f.valor / top * 100) : 0;
+        return '<li><span>' + esc(f.etapa) + '</span><span class="num">' + fmt(f.valor) + '</span><span class="track"><span class="fill" style="width:' + pct + '%"></span></span></li>';
+      }).join('') + '</ul>';
+      return '<article class="proj"><div class="proj-top"><div><strong>' + esc(p.nome) + '</strong><br><a href="https://' + esc(p.site) + '" target="_blank" rel="noopener">' + esc(p.site) + ' ↗</a></div><span class="sig ' + esc(p.sinal) + '">' + (LABEL[p.sinal] || p.sinal) + '</span></div>' +
+        '<div class="chips">' + chips + '</div>' + nums + fun + '<div class="act"><strong>Próxima ação:</strong> ' + esc(p.acao) + '</div></article>';
+    }).join('');
+  }
+
   /* ---------- prospects ---------- */
   var PR = { data: null, tab: null };
   var PR_STATUS = [['novo', 'Novo'], ['convite', 'Convite enviado'], ['conectado', 'Conectado'], ['conversa', 'Em conversa'], ['descartado', 'Descartar']];
@@ -446,6 +509,7 @@ button.launch:disabled { opacity: .6; cursor: progress; }
   function render(d) {
     renderLaunch(Object.assign({}, d.atalhos, { 'pr-run': [{ t: 'Buscar novos agora', s: 'Roda a busca fora da segunda. Leva alguns minutos; depois clique em Atualizar.', action: 'prospects-buscar', confirm: 'Buscar novos prospects agora para os 3 projetos?', ic: 'flow', go: 'buscar', done: 'Em alguns minutos clique em Atualizar para ver os novos.' }] }));
     renderProspects(d.prospects);
+    renderProjetos(d.projetos);
     var when = new Date(d.geradoEm);
     document.getElementById('updated').textContent = 'Atualizado ' + when.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
