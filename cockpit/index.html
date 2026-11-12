@@ -203,6 +203,43 @@ button.launch:disabled { opacity: .6; cursor: progress; }
 .keyrow button { background: var(--accent); color: var(--panel); border: 0; border-radius: 8px; padding: 7px 14px; font-weight: 600; }
 .skeleton { color: var(--muted); font-size: 0.85rem; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* o que fazer agora */
+.todo { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: t; }
+.todo li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); }
+.todo li.agir { border-left: 4px solid var(--bad); }
+.todo li.atencao { border-left: 4px solid var(--wait); }
+.todo li.info { border-left: 4px solid var(--accent); }
+.todo .n { font: 500 0.8rem/1.6 var(--f-mono); color: var(--muted); counter-increment: t; }
+.todo .n::before { content: counter(t); }
+.todo .tt { font-weight: 600; }
+.todo .why { font-size: 0.84rem; color: var(--muted); }
+.todo .meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: end; }
+.lvl { font: 500 0.66rem/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: .05em; }
+.lvl.agir { background: var(--bad-bg); color: var(--bad); } .lvl.atencao { background: var(--wait-bg); color: var(--wait); } .lvl.info { background: var(--accent-soft); color: var(--accent); }
+.prj { font: 500 0.66rem/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+@media (max-width: 560px) { .todo li { grid-template-columns: auto minmax(0, 1fr); } .todo .meta { grid-column: 2; justify-content: start; } }
+
+/* dinheiro */
+.kpis.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 900px) { .kpis.six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .kpis.six { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi .v.sm { font-size: 1.25rem; }
+
+/* ICAO */
+.tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.tbl th { font: 500 0.66rem/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); text-align: right; padding: 2px 0 6px; }
+.tbl td { text-align: right; padding: 5px 0; font-family: var(--f-mono); border-top: 1px solid var(--line); }
+.tbl th:first-child, .tbl td:first-child { text-align: left; font-family: var(--f-body); }
+.tbl td.name { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 45%; }
+.flag { font: 500 0.62rem/1 var(--f-mono); padding: 3px 5px; border-radius: 4px; background: var(--bad-bg); color: var(--bad); margin-left: 6px; }
+.subs { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.84rem; }
+.subs li { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
+.subs .st { font: 500 0.72rem var(--f-mono); color: var(--ok); }
+.subs .st.cancel { color: var(--wait); } .subs .st.fim { color: var(--muted); }
+details.more { border-top: 1px solid var(--line); padding-top: 8px; font-size: 0.82rem; }
+details.more summary { cursor: pointer; color: var(--muted); }
+.launch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; align-items: start; }
 </style>
 </head>
 <body>
@@ -220,75 +257,83 @@ button.launch:disabled { opacity: .6; cursor: progress; }
 
   <div id="banner"></div>
 
-  <nav class="strip" id="sites" aria-label="Status dos sites">
-    <span class="pill"><span class="dot"></span>Verificando sites…</span>
-  </nav>
+  <section class="panel" aria-labelledby="todo-title">
+    <div class="panel-head">
+      <h2 id="todo-title">O que fazer agora</h2>
+      <span class="src">Em ordem de prioridade · recalculado a cada atualização</span>
+    </div>
+    <ol class="todo" id="todo"><li><span class="skeleton">As prioridades aparecem quando o cockpit conecta.</span></li></ol>
+  </section>
+
+  <section class="panel" aria-labelledby="money-title">
+    <div class="panel-head">
+      <h2 id="money-title">Dinheiro</h2>
+      <span class="src" id="money-src">Stripe (ICAO + Dream) · anúncios Meta e Google</span>
+    </div>
+    <div class="kpis six" id="money"><div class="kpi"><span class="l">Carregando…</span><span class="v">—</span></div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="icao-title">
+    <div class="panel-head">
+      <h2 id="icao-title">ICAO English Lab · o projeto que vende</h2>
+      <span class="src"><a href="https://icaoenglishlab.com" target="_blank" rel="noopener">icaoenglishlab.com ↗</a> · GA4 · Stripe · Meta · Google · 7 dias</span>
+    </div>
+    <div class="kpis" id="icao-kpis"><div class="kpi"><span class="l">Carregando…</span><span class="v">—</span></div></div>
+    <div class="two">
+      <div class="group">
+        <span class="eyebrow">Funil · 7 dias (a compra vem do Stripe)</span>
+        <ul class="funnel-list" id="icao-funil"></ul>
+      </div>
+      <div class="group">
+        <span class="eyebrow">Anúncios · 7 dias</span>
+        <div id="icao-ads"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel-head" style="margin-bottom:6px">
+        <span class="eyebrow">Sessões · últimos 30 dias</span>
+      </div>
+      <div id="chart"><p class="skeleton">O gráfico aparece quando os dados chegam.</p></div>
+    </div>
+    <div class="two">
+      <div class="group">
+        <span class="eyebrow">De onde vêm as visitas · 7 dias</span>
+        <div id="icao-origens"></div>
+        <p class="note">Engajamento abaixo de 20% costuma ser robô ou tráfego sem intenção.</p>
+      </div>
+      <div class="group">
+        <span class="eyebrow">Assinantes recentes · Premium ICAO</span>
+        <ul class="subs" id="icao-subs"></ul>
+      </div>
+    </div>
+  </section>
 
   <section class="panel" aria-labelledby="pj-title">
     <div class="panel-head">
-      <h2 id="pj-title">Projetos</h2>
-      <span class="src">Últimos 7 dias vs 7 anteriores · GA4 · Meta Ads · Google Ads</span>
+      <h2 id="pj-title">Outros projetos</h2>
+      <span class="src">Últimos 7 dias vs 7 anteriores · gargalo e próxima ação</span>
     </div>
     <div class="proj-grid" id="proj-grid"><p class="skeleton">Os projetos aparecem quando o cockpit conecta.</p></div>
   </section>
 
-  <div class="grid">
-    <div class="col">
-      <section class="panel" aria-labelledby="ga-title">
-        <div class="panel-head">
-          <h2 id="ga-title">Acessos · brandoguitarras.com.br</h2>
-          <span class="src" id="ga-src">Google Analytics 4</span>
-        </div>
-        <div class="kpis" id="kpis">
-          <div class="kpi"><span class="l">Sessões · 7 dias</span><span class="v">—</span></div>
-          <div class="kpi"><span class="l">Usuários · 7 dias</span><span class="v">—</span></div>
-          <div class="kpi"><span class="l">Visualizações · 7 dias</span><span class="v">—</span></div>
-          <div class="kpi"><span class="l">Pedidos de prévia · 7 dias</span><span class="v">—</span></div>
-        </div>
-        <div>
-          <div class="panel-head" style="margin-bottom:6px">
-            <span class="eyebrow">Últimos 30 dias</span>
-            <div class="legend"><span><i style="background:var(--accent)"></i>Sessões</span><span><i style="background:var(--warm)"></i>Visualizações</span></div>
-          </div>
-          <div id="chart"><p class="skeleton">O gráfico aparece quando os dados chegam.</p></div>
-        </div>
-        <div class="two">
-          <div class="group"><span class="eyebrow">De onde vêm · 7 dias</span><ul class="bars" id="origens"></ul></div>
-          <div class="group"><span class="eyebrow">Páginas mais vistas · 7 dias</span><ul class="bars" id="paginas"></ul></div>
-        </div>
-      </section>
-
-      <section class="panel" aria-labelledby="cy-title">
-        <div class="panel-head">
-          <h2 id="cy-title">Ciclo Brando · meta: 1ª guitarra</h2>
-          <span class="src">BLM Scorecard · abas Vendas e Ações</span>
-        </div>
-        <div class="cycle" id="cycle">
-          <div class="progress" aria-hidden="true"><div style="width:0"></div></div>
-          <div class="facts">
-            <div><span class="v">—</span><span class="l">Guitarras vendidas</span></div>
-            <div><span class="v">—</span><span class="l">Ações comerciais</span></div>
-            <div><span class="v">—</span><span class="l">Propostas</span></div>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <div class="col">
-      <section class="panel" aria-labelledby="go-title">
-        <div class="panel-head"><h2 id="go-title">Conteúdo e publicação</h2><span class="src">Formulários n8n</span></div>
-        <div class="group" id="launch-content"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
-      </section>
-      <section class="panel" aria-labelledby="go2-title">
-        <div class="panel-head"><h2 id="go2-title">Dream Stickers · vídeos</h2><span class="src">Formulários n8n</span></div>
-        <div class="group" id="launch-dream"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
-      </section>
-      <section class="panel" aria-labelledby="go3-title">
-        <div class="panel-head"><h2 id="go3-title">Atalhos</h2></div>
-        <div class="group" id="launch-tools"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
-      </section>
-    </div>
+  <div class="launch-grid">
+    <section class="panel" aria-labelledby="go-title">
+      <div class="panel-head"><h2 id="go-title">Conteúdo e publicação</h2><span class="src">Formulários n8n</span></div>
+      <div class="group" id="launch-content"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
+    </section>
+    <section class="panel" aria-labelledby="go2-title">
+      <div class="panel-head"><h2 id="go2-title">Dream Stickers · vídeos</h2><span class="src">Formulários n8n</span></div>
+      <div class="group" id="launch-dream"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
+    </section>
+    <section class="panel" aria-labelledby="go3-title">
+      <div class="panel-head"><h2 id="go3-title">Atalhos</h2></div>
+      <div class="group" id="launch-tools"><p class="skeleton">Os atalhos aparecem quando o cockpit conecta.</p></div>
+    </section>
   </div>
+
+  <nav class="strip" id="sites" aria-label="Status dos sites">
+    <span class="pill"><span class="dot"></span>Verificando sites…</span>
+  </nav>
 
   <section class="panel" aria-labelledby="pr-title" id="prospects">
     <div class="pros-head">
@@ -381,9 +426,11 @@ button.launch:disabled { opacity: .6; cursor: progress; }
     var pts = arr.map(function (v, i) { return (i / (arr.length - 1) * W).toFixed(1) + ',' + (H - 2 - v / max * (H - 4)).toFixed(1); });
     return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
   }
-  function renderProjetos(list) {
+  function renderProjetos(all, ciclo) {
     var el = document.getElementById('proj-grid');
-    if (!list || !list.length) { el.innerHTML = '<p class="note">Sem dados de projetos.</p>'; return; }
+    var ORD = { dream: 1, coach: 2, blm: 3, brando: 4 };
+    var list = (all || []).filter(function (p) { return p.id !== 'icao'; }).sort(function (a, b) { return (ORD[a.id] || 9) - (ORD[b.id] || 9); });
+    if (!list.length) { el.innerHTML = '<p class="note">Sem dados de projetos.</p>'; return; }
     var LABEL = { verde: 'ok', amarelo: 'atenção', vermelho: 'agir', cinza: 'sem sensor' };
     el.innerHTML = list.map(function (p) {
       var s = p.sensores || {};
@@ -414,8 +461,99 @@ button.launch:disabled { opacity: .6; cursor: progress; }
         ads = '<div class="ads"><span class="note">Sem anúncios nos últimos 7 dias.</span></div>';
       }
       return '<article class="proj"><div class="proj-top"><div><strong>' + esc(p.nome) + '</strong><br><a href="https://' + esc(p.site) + '" target="_blank" rel="noopener">' + esc(p.site) + ' ↗</a></div><span class="sig ' + esc(p.sinal) + '">' + (LABEL[p.sinal] || p.sinal) + '</span></div>' +
-        '<div class="chips">' + chips + '</div>' + nums + fun + ads + '<div class="act"><strong>Próxima ação:</strong> ' + esc(p.acao) + '</div></article>';
+        nums + fun + ads + '<div class="act"><strong>Próxima ação:</strong> ' + esc(p.acao) + '</div>' +
+        (p.id === 'brando' ? cicloHtml(ciclo) : '') +
+        '<details class="more"><summary>Sensores</summary><div class="chips" style="margin-top:6px">' + chips + '</div></details></article>';
     }).join('');
+  }
+  function cicloHtml(c) {
+    c = c || {};
+    var acts = (c.ultimasAcoes || []).map(function (a) {
+      return '<li><span class="num">' + esc(a.data) + '</span> · ' + esc(a.tipo) + ' — ' + esc(a.pessoa) + '</li>';
+    }).join('');
+    return '<details class="more"><summary>Ciclo Brando · dia ' + esc(c.dia || '—') + ' de 90 · ' + fmt(c.guitarras) + ' guitarras vendidas</summary>' +
+      '<div class="cycle" style="margin-top:8px"><div class="progress" aria-hidden="true"><div style="width:' + Math.min(100, Math.round((c.dia || 0) / 90 * 100)) + '%"></div></div>' +
+      '<div class="facts"><div><span class="v">' + fmt(c.guitarras) + '</span><span class="l">Guitarras · ' + brl(c.receitaGuitarras) + '</span></div>' +
+      '<div><span class="v">' + fmt(c.acoes) + '</span><span class="l">Ações comerciais</span></div>' +
+      '<div><span class="v">' + fmt(c.propostas) + '</span><span class="l">Propostas</span></div></div>' +
+      (acts ? '<ul class="acts">' + acts + '</ul>' : '') +
+      '<p class="note">Faltam ' + esc(c.diasRestantes != null ? c.diasRestantes : '—') + ' dias. Outras receitas no ciclo: ' + brl(c.outrasReceitas) + '.</p></div></details>';
+  }
+
+  /* ---------- o que fazer agora ---------- */
+  function renderTodo(list) {
+    var el = document.getElementById('todo');
+    var LV = { agir: 'agir', atencao: 'atenção', info: 'acompanhar' };
+    if (!list || !list.length) { el.innerHTML = '<li class="info"><span class="n"></span><span><span class="tt">Nada urgente.</span><br><span class="why">Os números estão dentro do esperado.</span></span></li>'; return; }
+    el.innerHTML = list.map(function (a) {
+      return '<li class="' + esc(a.nivel) + '"><span class="n"></span><span><span class="tt">' + esc(a.titulo) + '</span><br><span class="why">' + esc(a.porque) + '</span></span>' +
+        '<span class="meta"><span class="prj">' + esc(a.projeto) + '</span><span class="lvl ' + esc(a.nivel) + '">' + (LV[a.nivel] || a.nivel) + '</span>' +
+        (a.link ? '<a class="mini" href="' + esc(a.link) + '" target="_blank" rel="noopener">abrir ↗</a>' : '') + '</span></li>';
+    }).join('');
+  }
+
+  /* ---------- dinheiro ---------- */
+  function kpi(l, v, d, cls) {
+    return '<div class="kpi"><span class="l">' + l + '</span><span class="v' + (cls ? ' ' + cls : '') + '">' + v + '</span>' + (d ? '<span class="d">' + d + '</span>' : '') + '</div>';
+  }
+  function renderMoney(s, projetos, outros) {
+    var el = document.getElementById('money');
+    var ads = (projetos || []).reduce(function (a, p) { return a + ((p.ads && p.ads.gasto7) || 0); }, 0) + ((outros && outros.gasto7) || 0);
+    if (!s || !s.ok) {
+      document.getElementById('money-src').textContent = 'Stripe indisponível' + (s && s.erro ? ': ' + s.erro.join('; ') : '');
+    }
+    s = s || { icao: {}, dream: {} };
+    var i = s.icao || {}, dr = s.dream || {};
+    el.innerHTML =
+      kpi('Disponível no Stripe', brl(s.disponivel), 'a receber ' + brl(s.aReceber), 'sm') +
+      kpi('Receita · 30 dias', brl(s.receita30), 'ICAO ' + brl(i.receita30) + ' · Dream ' + brl(dr.receita30), 'sm') +
+      kpi('Assinantes ICAO', fmt(i.ativas), (i.cancelando ? fmt(i.cancelando) + ' cancelando · ' : '') + 'MRR ' + brl(i.mrr)) +
+      kpi('Novos assinantes · 7 dias', fmt(i.novas7), fmt(i.novas30) + ' em 30 dias') +
+      kpi('Anúncios · 7 dias', brl(ads), 'todos os projetos, Meta + Google', 'sm') +
+      kpi('Custo por assinante ICAO', i.custoPorAssinante == null ? '—' : brl(i.custoPorAssinante), 'anúncios ICAO ' + brl(i.gastoAds7) + ' em 7 dias', 'sm');
+  }
+
+  /* ---------- ICAO ---------- */
+  function renderIcao(p, s, origens, geradoEm) {
+    if (!p) return;
+    var g = p.ga || {}, si = (s && s.icao) || {}, m = p.ads.meta || {}, go = p.ads.google || {};
+    var f = {}; p.funil.forEach(function (x) { f[x.evento] = x.valor || 0; });
+    var diff = (g.sessoes7 || 0) - (g.sessoesAnt || 0);
+    var robos = (origens || []).filter(function (x) { return x.engajamento < 0.2 && x.sessoes >= 20; }).reduce(function (a, x) { return a + x.sessoes; }, 0);
+    document.getElementById('icao-kpis').innerHTML =
+      kpi('Visitas · 7 dias', fmt(g.sessoes7), robos ? '~' + fmt(robos) + ' parecem robôs · ' + fmt((g.sessoes7 || 0) - robos) + ' reais' : (diff > 0 ? '+' : '') + fmt(diff) + ' vs semana anterior') +
+      kpi('Iniciaram o diagnóstico', fmt(f.diag_start), g.sessoes7 ? ((f.diag_start || 0) / g.sessoes7 * 100).toFixed(1).replace('.', ',') + '% das visitas' : '') +
+      kpi('Leads (e-mail)', fmt(f.generate_lead), fmt(f.begin_checkout) + ' foram ao checkout') +
+      kpi('Assinaram · 7 dias', fmt(si.novas7), 'Stripe · ' + brl(si.receita7) + ' recebidos');
+    var steps = [['Visitas', g.sessoes7], ['Iniciou diagnóstico', f.diag_start], ['Enviou diagnóstico', f.diag_submit], ['Lead (e-mail)', f.generate_lead], ['Checkout', f.begin_checkout], ['Assinou (Stripe)', si.novas7]];
+    var top = steps[0][1] || 1;
+    document.getElementById('icao-funil').innerHTML = steps.map(function (x, k) {
+      var prev = k ? steps[k - 1][1] : null;
+      var r = prev ? (x[1] || 0) / prev * 100 : 0;
+      var rate = prev ? ' <span class="note">(' + (r < 10 ? r.toFixed(1).replace('.', ',') : Math.round(r)) + '%)</span>' : '';
+      return '<li><span>' + esc(x[0]) + rate + '</span><span class="num">' + fmt(x[1]) + '</span><span class="track"><span class="fill" style="width:' + Math.max(2, (x[1] || 0) / top * 100) + '%"></span></span></li>';
+    }).join('') + (f.purchase ? '' : '<li><span class="note" style="grid-column:1/-1">O GA4 ainda registra 0 compras: a venda só aparece aqui pelo Stripe.</span></li>');
+    var cps = function (gasto) { return si.novas7 ? brl(gasto / si.novas7) : '—'; };
+    var row = function (n, gasto, cl, res) { return '<tr><td>' + n + '</td><td>' + brl(gasto) + '</td><td>' + fmt(cl) + '</td><td>' + (gasto && cl ? brl(gasto / cl) : '—') + '</td><td>' + res + '</td></tr>'; };
+    document.getElementById('icao-ads').innerHTML = '<table class="tbl"><tr><th>Canal</th><th>Gasto</th><th>Cliques</th><th>Custo/clique</th><th>Resultado</th></tr>' +
+      row('Google', go.gasto7 || 0, go.cliques7 || 0, '—') +
+      row('Meta', m.gasto7 || 0, m.cliques7 || 0, fmt(m.resultados7) + ' leads') + '</table>' +
+      '<p class="note">Custo por assinante (todos os anúncios): ' + cps((go.gasto7 || 0) + (m.gasto7 || 0)) + '. Sem o evento de compra no GA4, não dá para separar qual canal trouxe cada assinante.</p>';
+    var o = origens || [];
+    document.getElementById('icao-origens').innerHTML = o.length ? '<table class="tbl"><tr><th>Origem / mídia</th><th>Sessões</th><th>Engaj.</th><th>Duração</th></tr>' + o.map(function (x) {
+      var bad = x.engajamento < 0.2 && x.sessoes >= 20;
+      return '<tr><td class="name" title="' + esc(x.nome) + '">' + esc(x.nome) + (bad ? '<span class="flag">robô?</span>' : '') + '</td><td>' + fmt(x.sessoes) + '</td><td>' + Math.round(x.engajamento * 100) + '%</td><td>' + Math.round(x.duracao) + ' s</td></tr>';
+    }).join('') + '</table>' : '<p class="note">Sem dados de origem.</p>';
+    var subs = si.ultimas || [];
+    document.getElementById('icao-subs').innerHTML = subs.length ? subs.map(function (x) {
+      var cls = /cancel/.test(x.status) ? 'cancel' : x.status === 'encerrada' ? 'fim' : '';
+      return '<li><span>' + esc(x.nome) + ' <span class="note">desde ' + esc(x.desde) + '</span></span><span class="st ' + cls + '">' + esc(x.status) + '</span></li>';
+    }).join('') : '<li class="note">Nenhuma assinatura ainda.</li>';
+    // gráfico: série de 30 dias de sessões (GA omite dias zerados; a série já vem completa)
+    var base = new Date(geradoEm); base.setHours(12, 0, 0, 0);
+    var serie = g.serie || [];
+    var days = serie.map(function (v, k) { var dt = new Date(base); dt.setDate(dt.getDate() - (serie.length - k)); return { dt: dt, sessions: v, views: 0 }; });
+    if (days.length) drawChart(days); else document.getElementById('chart').innerHTML = '<p class="note">Sem série no período.</p>';
   }
 
   /* ---------- prospects ---------- */
@@ -530,7 +668,10 @@ button.launch:disabled { opacity: .6; cursor: progress; }
   function render(d) {
     renderLaunch(Object.assign({}, d.atalhos, { 'pr-run': [{ t: 'Buscar novos agora', s: 'Roda a busca fora da segunda. Leva alguns minutos; depois clique em Atualizar.', action: 'prospects-buscar', confirm: 'Buscar novos prospects agora para os 3 projetos?', ic: 'flow', go: 'buscar', done: 'Em alguns minutos clique em Atualizar para ver os novos.' }] }));
     renderProspects(d.prospects);
-    renderProjetos(d.projetos);
+    renderTodo(d.prioridades);
+    renderMoney(d.stripe, d.projetos, d.adsOutros);
+    renderIcao((d.projetos || []).filter(function (p) { return p.id === 'icao'; })[0], d.stripe, d.icaoOrigens, d.geradoEm);
+    renderProjetos(d.projetos, d.ciclo);
     var when = new Date(d.geradoEm);
     document.getElementById('updated').textContent = 'Atualizado ' + when.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
@@ -539,59 +680,6 @@ button.launch:disabled { opacity: .6; cursor: progress; }
       return '<a class="pill ' + (s.ok ? 'ok' : 'bad') + '" href="' + esc(s.url) + '" target="_blank" rel="noopener" title="' + esc(s.url) + '"><span class="dot"></span>' + esc(s.nome) + ' · <span class="num">' + esc(label) + '</span></a>';
     }).join('');
 
-    var ga = d.ga || {};
-    if (ga.erro) document.getElementById('ga-src').textContent = 'GA4 indisponível: ' + ga.erro;
-
-    // série completa de 30 dias (GA omite dias zerados)
-    var map = {};
-    (ga.diario || []).forEach(function (r) { map[r.date] = r; });
-    var days = [];
-    var base = new Date(when); base.setHours(12, 0, 0, 0);
-    for (var i = 30; i >= 1; i--) {
-      var dt = new Date(base); dt.setDate(dt.getDate() - i);
-      var k = dt.getFullYear() + String(dt.getMonth() + 1).padStart(2, '0') + String(dt.getDate()).padStart(2, '0');
-      var r = map[k] || {};
-      days.push({ dt: dt, sessions: r.sessions || 0, users: r.users || 0, views: r.views || 0 });
-    }
-    function sum(arr, f) { return arr.reduce(function (a, x) { return a + x[f]; }, 0); }
-    var last7 = days.slice(-7), prev7 = days.slice(-14, -7);
-    var ev = {}; (ga.eventos || []).forEach(function (e) { ev[e.nome] = e.valor; });
-    var kpis = [
-      ['Sessões · 7 dias', sum(last7, 'sessions'), sum(prev7, 'sessions')],
-      ['Usuários · 7 dias', sum(last7, 'users'), sum(prev7, 'users')],
-      ['Visualizações · 7 dias', sum(last7, 'views'), sum(prev7, 'views')],
-      ['Pedidos de prévia · 7 dias', ev.guitar_request || 0, null]
-    ];
-    document.getElementById('kpis').innerHTML = kpis.map(function (k) {
-      var delta = '';
-      if (k[2] !== null) {
-        var diff = k[1] - k[2];
-        delta = '<span class="d ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : '') + '">' + (diff > 0 ? '+' : '') + fmt(diff) + ' vs 7 dias antes</span>';
-      } else {
-        delta = '<span class="d">evento guitar_request</span>';
-      }
-      return '<div class="kpi"><span class="l">' + k[0] + '</span><span class="v">' + fmt(k[1]) + '</span>' + delta + '</div>';
-    }).join('');
-
-    drawChart(days);
-    bars('origens', (ga.origens || []).map(function (o) { return { nome: o.nome === '(direct)' ? 'Direto' : o.nome === 'ig' ? 'Instagram (ig)' : o.nome, valor: o.valor }; }), 'sessões');
-    bars('paginas', ga.paginas || [], 'views');
-
-    var c = d.ciclo || {};
-    var pct = Math.min(100, Math.round((c.dia || 0) / 90 * 100));
-    var acts = (c.ultimasAcoes || []).map(function (a) {
-      return '<li><span class="num">' + esc(a.data) + '</span> · ' + esc(a.tipo) + ' — ' + esc(a.pessoa) + (a.canal ? ' (' + esc(a.canal) + ')' : '') + (a.resultado ? ': ' + esc(a.resultado) : '') + '</li>';
-    }).join('');
-    document.getElementById('cycle').innerHTML =
-      '<div class="panel-head"><span class="eyebrow">Dia <span class="num">' + (c.dia || '—') + '</span> de 90</span><span class="note num">faltam ' + (c.diasRestantes != null ? c.diasRestantes : '—') + ' dias</span></div>' +
-      '<div class="progress" aria-hidden="true"><div style="width:' + pct + '%"></div></div>' +
-      '<div class="facts">' +
-        '<div><span class="v">' + fmt(c.guitarras) + '</span><span class="l">Guitarras vendidas · ' + brl(c.receitaGuitarras) + '</span></div>' +
-        '<div><span class="v">' + fmt(c.acoes) + '</span><span class="l">Ações comerciais</span></div>' +
-        '<div><span class="v">' + fmt(c.propostas) + '</span><span class="l">Propostas</span></div>' +
-      '</div>' +
-      (acts ? '<ul class="acts">' + acts + '</ul>' : '<p class="note">Nenhuma ação registrada no ciclo. Cada contato ou proposta vai na aba Ações do Scorecard (Data | Tipo | Pessoa | Canal | Resultado).</p>') +
-      '<p class="note">Outras receitas no ciclo (não contam para a meta): ' + brl(c.outrasReceitas) + '</p>';
   }
 
   function bars(id, list, unit) {
@@ -628,13 +716,8 @@ button.launch:disabled { opacity: .6; cursor: progress; }
     days.forEach(function (d, i) {
       var h = d.sessions / max * ih;
       svg += '<rect x="' + (L + i * bw + bw * 0.18) + '" y="' + (T + ih - h) + '" width="' + (bw * 0.64) + '" height="' + h + '" rx="1.5" fill="var(--accent)"><title>' +
-        d.dt.toLocaleDateString('pt-BR') + ': ' + d.sessions + ' sessões, ' + d.views + ' visualizações</title></rect>';
+        d.dt.toLocaleDateString('pt-BR') + ': ' + d.sessions + ' sessões</title></rect>';
     });
-    // linha: visualizações
-    var pts = days.map(function (d, i) { return (L + i * bw + bw / 2).toFixed(1) + ',' + y(d.views).toFixed(1); });
-    svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--warm)" stroke-width="1.6" stroke-linejoin="round"/>';
-    var last = days[n - 1];
-    svg += '<circle cx="' + (L + (n - 1) * bw + bw / 2) + '" cy="' + y(last.views) + '" r="3" fill="var(--warm)"/>';
     // rótulos de data: 1 a cada 7 dias
     days.forEach(function (d, i) {
       if ((n - 1 - i) % 7 === 0) svg += '<text x="' + (L + i * bw + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + d.dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + '</text>';

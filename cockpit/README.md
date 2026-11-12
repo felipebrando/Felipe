@@ -1,6 +1,8 @@
 # Cockpit BLM
 
-Painel único com acessos (GA4 da Brando), status dos sites, ciclo de vendas da Brando e atalhos para os formulários e workflows do n8n.
+Painel único, de cima para baixo: **O que fazer agora** (prioridades calculadas a cada atualização), **Dinheiro** (Stripe: saldo, receita, assinantes ICAO; gasto em anúncios), **ICAO English Lab** em destaque (funil até a assinatura no Stripe, anúncios, origens com alerta de robô, assinantes recentes), cartões dos outros projetos (o Ciclo Brando fica recolhido no cartão da Brando), atalhos, status dos sites e prospects.
+
+O Stripe é lido com uma chave restrita só de leitura (credencial "Stripe Leitura (Cockpit)" no n8n). A conta tem o Premium ICAO (assinatura) e o Crédito de Sonhos (Dream, avulso); pagamentos de teste do próprio Felipe não contam.
 
 - **Abrir:** `https://brandoguitarras.app.n8n.cloud/webhook/cockpit?key=SUA_CHAVE` (salve nos favoritos / tela inicial do celular).
 - A página também funciona aberta direto do arquivo `index.html`: ela pede a chave uma vez e guarda no navegador.
